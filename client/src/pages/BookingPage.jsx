@@ -130,19 +130,24 @@ export default function BookingPage() {
     setLoadingQuote(true);
     setError("");
     try {
-      const data = await apiFetch("/bookings/quote", {
-        method: "POST",
-        body: {
-          serviceType: form.serviceType,
-          vehicleType: form.vehicleType,
-          distanceKm: Number(form.distanceKm || 0),
-          durationHours: Number(form.durationHours || 0),
-          pickupTime: form.pickupTime,
-          returnTrip: Boolean(form.returnTrip),
-        },
-      });
-      setQuote(data.quote);
-      return data.quote;
+      const distance = Number(form.distanceKm || 0);
+const hours = Number(form.durationHours || 0);
+
+const baseFare = 145;
+const distanceFare = distance * 4.7;
+const hourlyFare = hours * 50;
+const surcharges = 25;
+
+const quoteResponse = {
+  baseFare,
+  distanceFare,
+  hourlyFare,
+  surcharges,
+  total: baseFare + distanceFare + hourlyFare + surcharges,
+};
+      
+      setQuote(quoteResponse);
+      return quoteResponse;
     } catch (requestError) {
       setError(requestError.message);
       return null;
