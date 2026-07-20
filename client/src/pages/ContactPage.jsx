@@ -2,7 +2,7 @@ import { Clock3, Mail, MapPin, Phone, Send } from "lucide-react";
 import { useState } from "react";
 import PageHero from "../components/PageHero";
 import Reveal from "../components/Reveal";
-import { apiFetch } from "../api";
+import { supabase } from "../supabase";
 
 const initialForm = {
   name: "",
@@ -22,19 +22,36 @@ export default function ContactPage() {
   };
 
   const submit = async (event) => {
-    event.preventDefault();
-    setLoading(true);
-    setFeedback(null);
+  event.preventDefault();
+  setLoading(true);
+  setFeedback(null);
 
-    try {
-      const data = await apiFetch("/contact", { method: "POST", body: form });
-      setFeedback({ type: "success", message: data.message });
-      setForm(initialForm);
-    } catch (error) {
-      setFeedback({ type: "error", message: error.message });
-    } finally {
-      setLoading(false);
-    }
+  try {
+    const { error } = await supabase.from("enquiries").insert({
+      name: form.name,
+      email: form.email,
+      phone: form.phone || null,
+      subject: form.subject,
+      message: form.message,
+    });
+
+    if (error) throw error;
+
+    setFeedback({
+      type: "success",
+      message: "Message sent successfully.",
+    });
+
+    setForm(initialForm);
+  } catch (error) {
+    setFeedback({
+      type: "error",
+      message: error.message,
+    });
+  } finally {
+    setLoading(false);
+  }
+};
   };
 
   const contactCards = [
