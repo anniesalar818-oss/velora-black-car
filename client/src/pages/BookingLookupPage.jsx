@@ -1,76 +1,213 @@
-import { CalendarDays, CarFront, Mail, MapPin, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { useState } from "react";
-import { apiFetch } from "../api";
-import PageHero from "../components/PageHero";
-import StatusBadge from "../components/StatusBadge";
+
+import { supabase } from "../supabase";
 
 export default function BookingLookupPage() {
-  const [form, setForm] = useState({ reference: "", email: "" });
+  const [reference, setReference] = useState("");
+  const [email, setEmail] = useState("");
   const [booking, setBooking] = useState(null);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const submit = async (event) => {
+  const findBooking = async (event) => {
     event.preventDefault();
+
     setLoading(true);
     setError("");
     setBooking(null);
 
     try {
-      const data = await apiFetch("/bookings/lookup", { method: "POST", body: form });
-      setBooking(data.booking);
+      const cleanReference = reference.trim();
+      const cleanEmail = email.trim().toLowerCase();
+
+      if (!cleanReference || !cleanEmail) {
+        throw new Error("Booking reference aur email dono enter karo.");
+      }
+
+      const { data, error: supabaseError } = await supabase
+        .from("bookings")
+        .select("*")
+        .eq("booking_reference", cleanReference)
+        .ilike("email", cleanEmail)
+        .maybeSingle();
+
+      if (supabaseError) {
+        throw supabaseError;
+      }
+
+      if (!data) {
+        throw new Error(
+          "Booking nahi mili. Reference aur email dobara check karo."
+        );
+      }
+
+      setBooking(data);
     } catch (requestError) {
-      setError(requestError.message);
+      setError(
+        requestError.message || "Booking search nahi ho saki."
+      );
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <main>
-      <PageHero
-        eyebrow="My booking"
-        title="Check your reservation status"
-        text="Enter the confirmation reference and email used for your reservation request."
-        image="/images/nyc-skyline.webp"
-        imagePosition="center 42%"
-        badge="Live reservation status"
-      />
-      <section className="section lookup-section">
-        <div className="container lookup-layout">
-          <form className="form-card lookup-form" onSubmit={submit}>
-            <label><span>Booking reference</span><input placeholder="VEL-260717-ABC123" value={form.reference} onChange={(event) => setForm({ ...form, reference: event.target.value.toUpperCase() })} required /></label>
-            <label><span>Email address</span><input type="email" placeholder="you@example.com" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} required /></label>
-            {error && <div className="form-feedback error">{error}</div>}
-            <button className="button button-full" type="submit" disabled={loading}>
-              {loading ? "Searching..." : "Find booking"} <Search size={18} />
+    <main className="booking-lookup-page">
+      <section className="section">
+        <div className="container booking-lookup-layout">
+          <form
+            className="booking-lookup-form"
+            onSubmit={findBooking}
+          >
+            <h1>Find your booking</h1>
+
+            <p>
+              Apni booking confirmation ka reference aur email
+              enter karo.
+            </p>
+
+            <label>
+              <span>Booking reference</span>
+
+              <input
+                type="text"
+                value={reference}
+                onChange={(event) =>
+                  setReference(event.target.value)
+                }
+                placeholder="VEL-123456789"
+                required
+              />
+            </label>
+
+            <label>
+              <span>Email address</span>
+
+              <input
+                type="email"
+                value={email}
+                onChange={(event) =>
+                  setEmail(event.target.value)
+                }
+                placeholder="you@example.com"
+                required
+              />
+            </label>
+
+            {error && (
+              <div className="form-feedback error">
+                {error}
+              </div>
+            )}
+
+            <button
+              className="button"
+              type="submit"
+              disabled={loading}
+            >
+              {loading ? "Searching..." : "Find booking"}
+              <Search size={19} />
             </button>
           </form>
 
-          <div className="lookup-result-shell">
+          <section className="booking-lookup-result">
             {!booking ? (
-              <div className="empty-state">
-                <Search size={42} />
-                <h3>Your trip details will appear here</h3>
-                <p>Use the reference from your booking confirmation.</p>
+              <div className="booking-empty-state">
+                <Search size={54} />
+
+                <h2>Your trip details will appear here</h2>
+
+                <p>
+                  Use the reference from your booking confirmation.
+                </p>
               </div>
             ) : (
-              <article className="booking-result-card">
-                <div className="booking-result-header">
-                  <div><span>Booking reference</span><h2>{booking.reference}</h2></div>
-                  <StatusBadge value={booking.status} />
+              <article className="booking-details-card">
+                <div className="booking-details-heading">
+                  <div>
+                    <p className="eyebrow">Booking confirmed</p>
+
+                    <h2>{booking.booking_reference}</h2>
+                  </div>
+
+                  <span className="status-badge">
+                    {booking.booking_status || "pending"}
+                  </span>
                 </div>
-                <div className="booking-detail-grid">
-                  <div><MapPin /><span>Pickup</span><strong>{booking.pickupAddress}</strong></div>
-                  <div><MapPin /><span>Drop-off</span><strong>{booking.dropoffAddress || "Hourly service"}</strong></div>
-                  <div><CalendarDays /><span>Date & time</span><strong>{booking.pickupDate} · {booking.pickupTime}</strong></div>
-                  <div><CarFront /><span>Vehicle</span><strong>{booking.price?.vehicleLabel || booking.vehicleType}</strong></div>
-                  <div><Mail /><span>Payment</span><strong><StatusBadge value={booking.paymentStatus} /></strong></div>
-                  <div className="price-detail"><span>Estimated fare</span><strong>${Number(booking.price?.total || 0).toFixed(2)} USD</strong></div>
+
+                <div className="booking-details-grid">
+                  <div>
+                    <span>Customer</span>
+                    <strong>{booking.customer_name}</strong>
+                  </div>
+
+                  <div>
+                    <span>Email</span>
+                    <strong>{booking.email}</strong>
+                  </div>
+
+                  <div>
+                    <span>Phone</span>
+                    <strong>{booking.phone}</strong>
+                  </div>
+
+                  <div>
+                    <span>Service</span>
+                    <strong>{booking.service_type}</strong>
+                  </div>
+
+                  <div>
+                    <span>Vehicle</span>
+                    <strong>{booking.vehicle_type}</strong>
+                  </div>
+
+                  <div>
+                    <span>Passengers</span>
+                    <strong>{booking.passengers}</strong>
+                  </div>
+
+                  <div>
+                    <span>Pickup</span>
+                    <strong>{booking.pickup_address}</strong>
+                  </div>
+
+                  <div>
+                    <span>Destination</span>
+                    <strong>{booking.dropoff_address}</strong>
+                  </div>
+
+                  <div>
+                    <span>Date</span>
+                    <strong>{booking.pickup_date}</strong>
+                  </div>
+
+                  <div>
+                    <span>Time</span>
+                    <strong>{booking.pickup_time}</strong>
+                  </div>
+
+                  <div>
+                    <span>Estimated price</span>
+                    <strong>
+                      {booking.estimated_price
+                        ? `$${Number(
+                            booking.estimated_price
+                          ).toFixed(2)}`
+                        : "To be confirmed"}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>Payment</span>
+                    <strong>
+                      {booking.payment_status || "unpaid"}
+                    </strong>
+                  </div>
                 </div>
               </article>
             )}
-          </div>
+          </section>
         </div>
       </section>
     </main>
