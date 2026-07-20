@@ -1,0 +1,13 @@
+{
+  "name": "velora-black-car-animated",
+  "version": "1.1.0",
+  "private": true,
+  "description": "Full-stack luxury black car booking website with admin dashboard, payments, email, and MongoDB/JSON storage support.",
+  "scripts": {
+    "install:all": "npm install --prefix server --no-audit --no-fund && npm install --prefix client --no-audit --no-fund",
+    "dev": "node scripts/dev.cjs",
+    "build": "npm run build --prefix client",
+    "start": "npm run start --prefix server",
+    "seed:admin": "npm run seed:admin --prefix server"
+  }
+}

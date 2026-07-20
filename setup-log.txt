@@ -1,0 +1,16 @@
+Velora Black Car setup log
+Started: Sun 07/19/2026 16:51:37.51
+Node: v24.15.0
+npm: 11.12.1
+
+added 151 packages in 45s
+
+added 24 packages in 41s
+
+> velora-black-car-server@1.0.0 seed:admin
+> node scripts/createAdmin.js
+
+Database connected: Supabase
+Admin account ready: anumfatima123321@gmail.com
+Login email: anumfatima123321@gmail.com
+Admin password was read from ADMIN_PASSWORD in server/.env

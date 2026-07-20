@@ -1,0 +1,14 @@
+VELORA BLACK CAR - WINDOWS SETUP
+
+1. Extract this ZIP completely.
+2. Open the extracted folder.
+3. Double-click setup-windows.bat and wait for "Setup completed successfully".
+4. Double-click run-windows.bat.
+5. Open http://localhost:5173
+
+Admin login:
+Email: admin@velora.local
+Password: VeloraAdmin2026!
+
+This corrected package does not contain package-lock files tied to a private registry.
+If setup fails, open setup-log.txt and send the final lines.
