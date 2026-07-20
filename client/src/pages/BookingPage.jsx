@@ -13,6 +13,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { apiFetch } from "../api";
+import { supabase } from "../supabase";
 import FleetCard from "../components/FleetCard";
 import PageHero from "../components/PageHero";
 import { fleet } from "../data/siteData";
@@ -174,19 +175,43 @@ export default function BookingPage() {
     setError("");
 
     try {
-      const bookingResponse = await apiFetch("/bookings", {
-        method: "POST",
-        body: {
-          ...form,
-          passengers: Number(form.passengers),
-          luggage: Number(form.luggage),
-          distanceKm: Number(form.distanceKm || 0),
-          durationHours: Number(form.durationHours || 0),
-          returnTrip: Boolean(form.returnTrip),
-        },
-      });
+      const bookingReference = `VEL-${Date.now()}`;
 
-      const booking = bookingResponse.booking;
+const { data: result, error } = await supabase
+  .from("bookings")
+  .insert({
+    booking_reference: bookingReference,
+    service_type: payload.serviceType,
+    vehicle_type: payload.vehicleType,
+    distance_km: Number(payload.distanceKm) || null,
+    duration_hours: Number(payload.durationHours) || null,
+    pickup_address: payload.pickupAddress,
+    dropoff_address: payload.dropoffAddress,
+    pickup_date: payload.pickupDate,
+    pickup_time: payload.pickupTime,
+    return_trip: Boolean(payload.returnTrip),
+    return_date: payload.returnDate || null,
+    return_time: payload.returnTime || null,
+    flight_number: payload.flightNumber || null,
+    passengers: Number(payload.passengers) || 1,
+    luggage: Number(payload.luggage) || 0,
+    special_requests: payload.specialRequests || null,
+    customer_name: payload.customerName,
+    email: payload.email,
+    phone: payload.phone,
+    estimated_price:
+      Number(payload.estimatedPrice || payload.total || quote?.total) || null,
+    booking_status: "pending",
+    payment_status: "unpaid",
+  })
+  .select()
+  .single();
+
+if (error) throw error;
+       const booking = {
+  ...result,
+  reference: result.booking_reference,
+};
 
       if (form.paymentMethod === "card" && config.stripeEnabled) {
         try {
