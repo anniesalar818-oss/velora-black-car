@@ -1,3 +1,4 @@
+import { supabase } from "../supabase";
 import {
   Banknote,
   CalendarClock,
@@ -46,38 +47,113 @@ export default function AdminDashboardPage() {
   const [error, setError] = useState("");
 
   const loadBookings = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    const query = new URLSearchParams();
-    if (filters.search) query.set("search", filters.search);
-    if (filters.status) query.set("status", filters.status);
-    if (filters.paymentStatus) query.set("paymentStatus", filters.paymentStatus);
+  setLoading(true);
+  setError("");
 
-    try {
-      const data = await apiFetch(`/admin/bookings?${query.toString()}`);
-      setBookings(data.bookings);
-      setStats(data.stats);
-    } catch (requestError) {
-      if (requestError.status === 401) navigate("/admin/login");
-      else setError(requestError.message);
-    } finally {
-      setLoading(false);
+  try {
+    let request = supabase
+      .from("bookings")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (filters.status) {
+      request = request.eq("booking_status", filters.status);
     }
-  }, [filters, navigate]);
+
+    if (filters.paymentStatus) {
+      request = request.eq("payment_status", filters.paymentStatus);
+    }
+
+    if (filters.search) {
+      const search = filters.search.trim();
+
+      request = request.or(
+        `booking_reference.ilike.%${search}%,customer_name.ilike.%${search}%,email.ilike.%${search}%`
+      );
+    }
+
+    const { data, error: supabaseError } = await request;
+
+    if (supabaseError) throw supabaseError;
+
+    const formattedBookings = (data || []).map((booking) => ({
+      ...booking,
+      bookingReference: booking.booking_reference,
+      serviceType: booking.service_type,
+      vehicleType: booking.vehicle_type,
+      distanceKm: booking.distance_km,
+      durationHours: booking.duration_hours,
+      pickupAddress: booking.pickup_address,
+      dropoffAddress: booking.dropoff_address,
+      pickupDate: booking.pickup_date,
+      pickupTime: booking.pickup_time,
+      returnTrip: booking.return_trip,
+      returnDate: booking.return_date,
+      returnTime: booking.return_time,
+      flightNumber: booking.flight_number,
+      specialRequests: booking.special_requests,
+      customerName: booking.customer_name,
+      estimatedPrice: booking.estimated_price,
+      bookingStatus: booking.booking_status,
+      paymentStatus: booking.payment_status,
+      createdAt: booking.created_at,
+      updatedAt: booking.updated_at,
+    }));
+
+    setBookings(formattedBookings);
+
+    setStats({
+      total: formattedBookings.length,
+      pending: formattedBookings.filter(
+        (booking) => booking.bookingStatus === "pending"
+      ).length,
+      confirmed: formattedBookings.filter(
+        (booking) => booking.bookingStatus === "confirmed"
+      ).length,
+      completed: formattedBookings.filter(
+        (booking) => booking.bookingStatus === "completed"
+      ).length,
+      revenue: formattedBookings.reduce(
+        (total, booking) =>
+          total +
+          (booking.paymentStatus === "paid"
+            ? Number(booking.estimatedPrice || 0)
+            : 0),
+        0
+      ),
+    });
+  } catch (requestError) {
+    setError(requestError.message);
+  } finally {
+    setLoading(false);
+  }
+}, [filters]);
 
   const loadMessages = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const data = await apiFetch("/admin/contacts");
-      setMessages(data.messages);
-    } catch (requestError) {
-      if (requestError.status === 401) navigate("/admin/login");
-      else setError(requestError.message);
-    } finally {
-      setLoading(false);
-    }
-  }, [navigate]);
+  setLoading(true);
+  setError("");
+
+  try {
+    const { data, error: supabaseError } = await supabase
+      .from("enquiries")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (supabaseError) throw supabaseError;
+
+    const formattedMessages = (data || []).map((message) => ({
+      ...message,
+      createdAt: message.created_at,
+      updatedAt: message.updated_at,
+    }));
+
+    setMessages(formattedMessages);
+  } catch (requestError) {
+    setError(requestError.message);
+  } finally {
+    setLoading(false);
+  }
+}, []);
 
   useEffect(() => {
     apiFetch("/auth/me")
